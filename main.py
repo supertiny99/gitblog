@@ -11,7 +11,7 @@ MD_HEAD = """## GitBlog
 
 BACKUP_DIR = "BACKUP"
 ANCHOR_NUMBER = 5
-IGNORE_LABELS = ["Top", "TODO", "Friends", "About", "Things"]
+SHOW_LABELS = ["Top", "TODO", "Friends", "About", "Things"]
 
 
 def get_me(user):
@@ -72,8 +72,8 @@ def add_md_label(repo, md, me):
 
     with open(md, "a+", encoding="utf-8") as md:
         for label in labels:
-            # 跳过忽略的标签
-            if label.name in IGNORE_LABELS:
+            # 只显示指定的标签
+            if label.name not in SHOW_LABELS:
                 continue
 
             issues = get_issues_from_label(repo, label)

@@ -1,5 +1,8 @@
 name: Generate GitBlog README
 
+# 添加权限配置
+permissions:
+  contents: write  # 允许读写仓库内容
 on:
   workflow_dispatch:
   issues:

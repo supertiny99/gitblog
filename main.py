@@ -10,6 +10,8 @@ MD_HEAD = """## GitBlog
 """
 
 BACKUP_DIR = "BACKUP"
+ANCHOR_NUMBER = 5
+IGNORE_LABELS = ["Top", "TODO", "Friends", "About", "Things"]
 
 
 def get_me(user):
@@ -32,6 +34,16 @@ def get_repo(user: Github, repo: str):
     return user.get_repo(repo)
 
 
+def get_repo_labels(repo):
+    """获取仓库所有标签"""
+    return [l for l in repo.get_labels()]
+
+
+def get_issues_from_label(repo, label):
+    """根据标签获取 issues"""
+    return repo.get_issues(labels=(label,))
+
+
 def add_issue_info(issue, md):
     time = format_time(issue.created_at)
     md.write(f"- [{issue.title}]({issue.html_url}) - {time}\n")
@@ -41,6 +53,46 @@ def add_md_header(md, repo_name):
     with open(md, "w", encoding="utf-8") as md:
         md.write(MD_HEAD.format(repo_name=repo_name))
         md.write("\n")
+
+
+def add_md_label(repo, md, me):
+    """按标签分类添加 issues"""
+    labels = get_repo_labels(repo)
+
+    # 按描述信息排序标签，如果没有描述则按名称排序
+    labels = sorted(
+        labels,
+        key=lambda x: (
+            x.description is None,
+            x.description == "",
+            x.description,
+            x.name,
+        ),
+    )
+
+    with open(md, "a+", encoding="utf-8") as md:
+        for label in labels:
+            # 跳过忽略的标签
+            if label.name in IGNORE_LABELS:
+                continue
+
+            issues = get_issues_from_label(repo, label)
+            issues = list(sorted(issues, key=lambda x: x.created_at, reverse=True))
+            if len(issues) != 0:
+                md.write("## " + label.name + "\n\n")
+            i = 0
+            for issue in issues:
+                if not issue:
+                    continue
+                if is_me(issue, me) and not issue.pull_request:
+                    if i == ANCHOR_NUMBER:
+                        md.write("<details><summary>显示更多</summary>\n")
+                        md.write("\n")
+                    add_issue_info(issue, md)
+                    i += 1
+            if i > ANCHOR_NUMBER:
+                md.write("</details>\n")
+                md.write("\n")
 
 
 def add_md_issues(repo, md, me):
@@ -115,6 +167,7 @@ def main(token, repo_name, issue_number=None, dir_name=BACKUP_DIR):
         
         # 生成 README.md
         add_md_header("README.md", repo_name)
+        add_md_label(repo, "README.md", me)
         add_md_issues(repo, "README.md", me)
         
         # 获取需要生成备份的 issues
